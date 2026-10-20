@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+  --color-ink: #10302b;
+  --color-ink-2: #1d4a41;
+  --color-field: #edf2ef;
+  --color-line: #c9d6d0;
+  --color-muted: #56695f;
+  --color-ok: #1b7f4b;
+  --color-bad: #b3261e;
+  --color-warn: #9a6200;
+  --color-gold: #b8862b;
+
+  --animate-stamp: stamp 0.35s ease-out;
+  @keyframes stamp {
+    from { transform: scale(1.5) rotate(-14deg); opacity: 0; }
+    to { transform: none; opacity: 1; }
+  }
+}
+
+@layer base {
+  body { @apply bg-field font-sans text-ink antialiased; }
+  :focus-visible { outline: 3px solid #6fb39b; outline-offset: 2px; }
+}
