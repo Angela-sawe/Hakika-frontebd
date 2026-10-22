@@ -1,32 +1,37 @@
-/* ===================================================================
- * The QR link format. MUST MATCH what anchor-service puts in the QR.
- *
- * ASSUMED: https://<site>/verify#<base64url(JSON)>
- * where the JSON holds { docType, regNo, name, program, issued, salt }.
- * The details sit after the "#", so browsers never send them to a server.
- * =================================================================== */
-import { FIELD_ORDER } from "./fingerprint.js";
+const toB64Url = bytes => btoa(String.fromCharCode(...bytes))
+  .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
-const toB64Url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-const fromB64Url = s => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
+function fromB64Url(value) {
+  const base64 = value.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(value.length / 4) * 4, "=");
+  return Uint8Array.from(atob(base64), character => character.charCodeAt(0));
+}
 
-export function encodePayload(obj) {
-  return toB64Url(new TextEncoder().encode(JSON.stringify(obj)));
+export function encodePayload(payload) {
+  const data = {
+    v: 1, d: payload.docId, t: payload.docType, r: payload.regNo,
+    n: payload.name, p: payload.program, i: payload.issuedOn, s: payload.salt
+  };
+  return toB64Url(new TextEncoder().encode(JSON.stringify(data)));
 }
 
 export function decodePayload(text) {
   try {
-    const obj = JSON.parse(new TextDecoder().decode(fromB64Url(text.trim())));
-    return FIELD_ORDER.every(k => typeof obj[k] === "string") ? obj : null;
+    const data = JSON.parse(new TextDecoder().decode(fromB64Url(text.trim())));
+    if (data?.v !== 1) return null;
+    const payload = {
+      docId: data.d, docType: data.t, regNo: data.r,
+      name: data.n, program: data.p, issuedOn: data.i, salt: data.s
+    };
+    if (Object.values(payload).some(value => typeof value !== "string")) return null;
+    return payload;
   } catch {
     return null;
   }
 }
 
-/** Accepts a full link or just the part after the "#". Returns the details object or null. */
 export function parseLink(input) {
-  const i = input.indexOf("#");
-  return decodePayload(i >= 0 ? input.slice(i + 1) : input);
+  const marker = input.indexOf("#");
+  return decodePayload(marker >= 0 ? input.slice(marker + 1) : input);
 }
 
 export const buildLink = (payload, origin = window.location.origin) => `${origin}/verify#${encodePayload(payload)}`;

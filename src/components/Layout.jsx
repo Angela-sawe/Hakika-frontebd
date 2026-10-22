@@ -36,8 +36,8 @@ export default function Layout() {
         </div>
       </header>
 
-      <div className={`border-b px-4 py-2 text-center text-xs font-medium sm:text-sm ${CONFIG.useMock ? "border-amber-200 bg-[#fff8e8] text-amber-950" : "border-line/60 bg-[#f4f8f5] text-ink"}`}>
-        {CONFIG.useMock ? <>Prototype preview: sample records are fictional and this is not an official MUT service.</> : <>Murang'a University of Technology - Digital document verification</>}
+      <div className="border-b border-line/60 bg-[#f4f8f5] px-4 py-2 text-center text-xs font-medium text-ink sm:text-sm">
+        {CONFIG.institution} - Digital document verification
       </div>
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-7 sm:px-6 sm:py-10"><Outlet /></main>

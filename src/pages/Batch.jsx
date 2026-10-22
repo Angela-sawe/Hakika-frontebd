@@ -21,7 +21,7 @@ export default function Batch() {
 
   function download() {
     const csv = toCsv([["Status", "Name", "Registration no.", "Document", "Issued"],
-      ...rows.map(r => [LABEL[r.status], r.payload?.name ?? "", r.payload?.regNo ?? "", r.payload ? docLabel(r.payload.docType) : "", r.payload?.issued ?? ""])]);
+      ...rows.map(r => [LABEL[r.status], r.payload?.name ?? "", r.payload?.regNo ?? "", r.payload ? docLabel(r.payload.docType) : "", r.payload?.issuedOn ?? ""])]);
     const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(new Blob([csv], { type: "text/csv" })), download: "hakiki-results.csv" });
     a.click();
   }
@@ -58,7 +58,7 @@ export default function Batch() {
                         <td className="py-2 pr-3">{r.payload?.name ?? "—"}</td>
                         <td className="py-2 pr-3">{r.payload?.regNo ?? "—"}</td>
                         <td className="py-2 pr-3">{r.payload ? docLabel(r.payload.docType) : "—"}</td>
-                        <td className="py-2 pr-3">{r.payload?.issued ?? "—"}</td>
+                        <td className="py-2 pr-3">{r.payload?.issuedOn ?? "—"}</td>
                       </tr>
                     ))}
                   </tbody>

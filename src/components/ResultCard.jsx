@@ -1,70 +1,47 @@
-import { useState } from "react";
-import Seal from "./Seal.jsx";
 import { CONFIG } from "../config.js";
-import { docLabel, fmtDate, shortHash } from "../lib/format.js";
+import { fmtDate } from "../lib/format.js";
 
 const VIEW = {
-  genuine: { tone: "ok", title: "Genuine", text: "MUT issued this exact record, and it is registered on the blockchain." },
-  revoked: { tone: "bad", title: "Revoked", text: "MUT issued this record but has since withdrawn it. Do not accept it." },
-  not_verified: { tone: "warn", title: "Not verified", text: "These details do not match any record MUT registered. The document may have been altered or forged." },
-  invalid: { tone: "warn", title: "Link not recognised", text: "This does not look like a MUT verification link. Scan the QR code on the document again." },
-  error: { tone: "warn", title: "Could not check", text: "We could not reach the blockchain. Check your connection and try again." }
+  genuine: { tone: "ok", title: "GENUINE", text: "This document matches an official record issued by Murang'a University of Technology." },
+  revoked: { tone: "warn", title: "REVOKED", text: "This document was issued but has since been cancelled by the issuer. Do not rely on it." },
+  not_verified: { tone: "bad", title: "NOT VERIFIED", text: "No matching record was found. This document may be forged, altered, or not issued by Murang'a University of Technology." },
+  invalid: { tone: "bad", title: "NOT VERIFIED", text: "No matching record was found. This document may be forged, altered, or not issued by Murang'a University of Technology." },
+  error: { tone: "bad", title: "Could not check", text: "The blockchain could not be reached. Check your internet and try again." }
 };
-const TEXT = { ok: "text-ok", bad: "text-bad", warn: "text-warn" };
-const BORDER = { ok: "border-ok/40", bad: "border-bad/40", warn: "border-warn/40" };
+const TONE = { ok: "text-ok border-ok/40 bg-[#f0f8f3]", warn: "text-warn border-warn/40 bg-[#fff8e8]", bad: "text-bad border-bad/40 bg-[#fff4f3]" };
 
 export default function ResultCard({ result }) {
-  const v = VIEW[result.status];
-  const p = result.payload;
-  const [copied, setCopied] = useState(false);
-
-  const rows = p && result.status !== "error" ? [
-    ["Document", docLabel(p.docType)],
-    ["Name", p.name],
-    ["Registration no.", p.regNo],
-    ["Programme", p.program],
-    ["Issued", fmtDate(p.issued)],
-    result.record && ["Registered on-chain", fmtDate(result.record.issuedAt * 1000)]
-  ].filter(Boolean) : [];
-
-  async function copy() {
-    try { await navigator.clipboard.writeText(result.hash); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* clipboard blocked */ }
-  }
+  const view = VIEW[result.status];
+  const payload = result.payload;
+  const rows = payload ? [
+    ["Programme", payload.program], ["Document type", payload.docType],
+    ["Issued on", fmtDate(payload.issuedOn)], ["Document ID", payload.docId],
+    ...(result.record?.exists ? [["Recorded on-chain", fmtDate(result.record.issuedAt * 1000)]] : []),
+    ...(result.hash ? [["Fingerprint", result.hash]] : [])
+  ] : [];
 
   return (
-    <section aria-live="polite" className={`rounded-xl border-2 bg-white p-6 text-center shadow-sm ${BORDER[v.tone]}`}>
-      <Seal kind={v.tone} className="mx-auto mb-2 size-28" />
-      <h2 className={`text-3xl font-extrabold tracking-tight ${TEXT[v.tone]}`}>{v.title}</h2>
-      <p className="mx-auto mt-1 max-w-prose text-muted">{v.text}</p>
+    <section aria-live="polite" aria-atomic="true" className={`rounded-2xl border-2 p-5 shadow-sm sm:p-7 ${TONE[view.tone]}`}>
+      <p className="text-center text-xs font-bold uppercase tracking-[0.16em]">Verification result</p>
+      <h2 className="mt-1 text-center text-3xl font-extrabold tracking-tight">{view.title}</h2>
+      <p className="mx-auto mt-2 max-w-prose text-center text-sm text-ink">{view.text}</p>
 
-      {rows.length > 0 && (
-        <dl className="mt-5 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 border-t border-line pt-4 text-left">
-          {rows.map(([k, val]) => (
-            <div key={k} className="contents">
-              <dt className="text-muted">{k}</dt>
-              <dd className="break-words font-semibold">{val}</dd>
-            </div>
-          ))}
-          {result.hash && (
-            <div className="contents">
-              <dt className="text-muted">Fingerprint</dt>
-              <dd className="flex flex-wrap items-center gap-2 font-mono text-sm">
-                {shortHash(result.hash)}
-                <button onClick={copy} className="rounded border border-line px-2 py-0.5 font-sans text-xs font-semibold hover:bg-field">{copied ? "Copied" : "Copy"}</button>
-              </dd>
-            </div>
-          )}
-        </dl>
-      )}
+      {payload && <div className="mt-5 rounded-xl border border-line bg-white p-4 text-center text-ink sm:p-5">
+        <p className="text-xs font-bold uppercase tracking-wider text-muted">Name on record</p>
+        <p className="mt-1 break-words text-2xl font-extrabold sm:text-3xl">{payload.name}</p>
+        <p className="mt-4 text-xs font-bold uppercase tracking-wider text-muted">Registration number</p>
+        <p className="mt-1 break-all text-xl font-bold sm:text-2xl">{payload.regNo}</p>
+      </div>}
 
-      {result.status === "genuine" && (
-        <p className="mt-4 rounded-lg bg-field p-3 text-left text-sm text-muted">
-          This confirms the document is real and unchanged. It does not prove the person showing it is the named student, so check their identity as you normally would.
-        </p>
-      )}
-      {!CONFIG.useMock && CONFIG.contractAddress && result.hash && (
-        <a className="mt-3 inline-block text-sm font-semibold underline" target="_blank" rel="noreferrer" href={`${CONFIG.explorer}/address/${CONFIG.contractAddress}`}>View the contract on the explorer</a>
-      )}
+      {result.status === "revoked" && result.record?.revokedAt > 0 && <p className="mt-3 text-center text-sm">Cancelled on {fmtDate(result.record.revokedAt * 1000)}</p>}
+      {rows.length > 0 && <dl className="mt-5 grid grid-cols-[minmax(6rem,auto)_minmax(0,1fr)] gap-x-3 gap-y-2 border-t border-line/70 pt-4 text-left text-sm sm:grid-cols-[auto_1fr] sm:gap-x-5">
+        {rows.map(([label, value]) => <div key={label} className="contents">
+          <dt className="text-muted">{label}</dt><dd className="break-all font-medium text-ink">{value}</dd>
+        </div>)}
+      </dl>}
+
+      <p className="mt-5 rounded-xl bg-white/80 p-3 text-left text-sm text-ink">Also compare the name with the holder's national ID or student ID. Only trust this page if its address is the official one printed on the certificate.</p>
+      {result.hash && <a className="mt-4 inline-block min-h-11 content-center text-sm font-semibold underline underline-offset-4" target="_blank" rel="noopener noreferrer" href={`${CONFIG.explorer}/address/${CONFIG.contractAddress}`}>View the contract on Snowtrace</a>}
     </section>
   );
 }
